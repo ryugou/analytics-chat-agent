@@ -1,7 +1,0 @@
-# requirements.txt
-
-langchain
-openai
-qdrant-client
-python-dotenv
-google-cloud-bigquery
