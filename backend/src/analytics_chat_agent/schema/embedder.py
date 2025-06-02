@@ -1,31 +1,38 @@
+"""ドキュメントの埋め込みとベクトルストレージ機能を提供するモジュール。
+
+このモジュールは、テキストドキュメントをベクトル化し、Qdrantベクトルデータベースに
+保存するための機能を提供します。OpenAIの埋め込みモデルを使用してテキストをベクトル化し、
+メタデータと共にQdrantに保存します。
 """
-Document embedding and vector storage functionality.
-"""
-from typing import List, Dict
+from typing import Dict, List
+
+from langchain.schema import Document
 from langchain_community.vectorstores import Qdrant
 from langchain_openai import OpenAIEmbeddings
-from langchain.schema import Document
 
 from ..config.settings import get_openai_api_key, get_qdrant_url
 
+
 def register_documents_to_qdrant(
-    collection_name: str,
-    texts: List[str],
-    metadatas: List[Dict]
+    collection_name: str, texts: List[str], metadatas: List[Dict]
 ) -> Qdrant:
-    """
-    Register documents to Qdrant vector store.
+    """ドキュメントをQdrantベクトルストアに登録します。
 
     Args:
-        collection_name: Name of the collection to store vectors
-        texts: List of text documents
-        metadatas: List of metadata dictionaries for each document
+        collection_name (str): ベクトルを保存するコレクション名。
+        texts (List[str]): 登録するテキストドキュメントのリスト。
+        metadatas (List[Dict]): 各ドキュメントに対応するメタデータの辞書のリスト。
 
     Returns:
-        Qdrant: Initialized Qdrant instance
+        Qdrant: 初期化されたQdrantインスタンス。
 
     Raises:
-        ValueError: If lengths of texts and metadatas don't match
+        ValueError: textsとmetadatasの長さが一致しない場合。
+
+    Note:
+        - OpenAIの埋め込みモデルを使用してテキストをベクトル化します。
+        - ベクトル化されたデータはQdrantに保存されます。
+        - 各ドキュメントは、テキストコンテンツとメタデータのペアとして保存されます。
     """
     if len(texts) != len(metadatas):
         raise ValueError("Length of texts and metadatas must match")
@@ -37,9 +44,7 @@ def register_documents_to_qdrant(
     ]
 
     # Initialize embeddings
-    embeddings = OpenAIEmbeddings(
-        openai_api_key=get_openai_api_key()
-    )
+    embeddings = OpenAIEmbeddings(api_key=get_openai_api_key())
 
     # Register documents in Qdrant
     qdrant = Qdrant.from_documents(
@@ -47,7 +52,7 @@ def register_documents_to_qdrant(
         embedding=embeddings,
         url=get_qdrant_url(),
         collection_name=collection_name,
-        prefer_grpc=False
+        prefer_grpc=False,
     )
 
-    return qdrant 
+    return qdrant
