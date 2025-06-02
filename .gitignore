@@ -1,22 +1,22 @@
 # Python仮想環境
-.venv/
+backend/.venv/
 __pycache__/
 *.pyc
 
-# Jupyter / VSCode
-.ipynb_checkpoints/
+# IDE設定
 .vscode/
+.ipynb_checkpoints/
 
-# 環境変数ファイル
-.env
+# 実際の環境変数ファイル（.envのみ無視する）
+backend/.env
 
-# ログ / テンポラリ
+# ログ・テンポラリ
 *.log
 *.tmp
 
-# QdrantなどのDockerボリューム（ローカル）
+# ローカルQdrantデータ（開発用）
 qdrant/
 
-# OS生成ファイル
+# OSファイル
 .DS_Store
 Thumbs.db
