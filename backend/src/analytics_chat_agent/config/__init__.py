@@ -1,3 +1,3 @@
 """
 Configuration and settings management.
-""" 
+"""

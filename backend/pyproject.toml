@@ -1,26 +1,81 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 79
+target-version = ['py312']
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 79
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+files = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --cov=src"
+pythonpath = ["src"]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "pass",
+    "@abstractmethod",
+]
+
+[tool.ruff]
+line-length = 79
+fix = true
+select = ["E", "F"]
+extend-ignore = ["E501"]
+
 [tool.poetry]
 name = "analytics-chat-agent"
 version = "0.1.0"
-description = "GA4データの分析・予測ツール"
-authors = ["Toshihiko Ryugo <ryugo@sivira.co>"]
-package-mode = true
-packages = [
-    { include = "analytics_chat_agent", from = "src" }
-]
+description = "Analytics Chat Agent"
+authors = ["Your Name <your.email@example.com>"]
+readme = "README.md"
+packages = [{ include = "src" }]
 
 [tool.poetry.dependencies]
-python = ">=3.13,<4.0"
-langchain-community = ">=0.0.27"
-langchain = ">=0.3.25,<0.4.0"
-langchain-openai = ">=0.0.8"
-openai = ">=1.82.1,<2.0.0"
-qdrant-client = ">=1.14.2"
-python-dotenv = ">=1.1.0,<2.0.0"
-google-cloud-bigquery = ">=3.34.0,<4.0.0"
+python = "^3.12"
+fastapi = "^0.104.1"
+uvicorn = "^0.24.0"
+python-dotenv = "^1.0.0"
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+python-multipart = "^0.0.6"
+sqlalchemy = "^2.0.23"
+psycopg2-binary = "^2.9.9"
+alembic = "^1.12.1"
+langchain = "^0.0.350"
+langchain-openai = "^0.0.2"
+openai = "^1.3.7"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.3.5"
-
-[build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api" 
+pytest = "^7.4.3"
+pytest-cov = "^4.1.0"
+black = "^23.12.1"
+isort = "^5.13.2"
+flake8 = "^6.1.0"
+mypy = "^1.7.1"
+pre-commit = "^3.5.0"
+ruff = "^0.1.9"
