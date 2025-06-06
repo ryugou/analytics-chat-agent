@@ -14,33 +14,34 @@ load_dotenv(env_path)
 
 
 def get_openai_api_key() -> str:
-    """OpenAI APIキーを環境変数から取得します。
-
-    Returns:
-        str: OpenAI APIキー。
-
-    Raises:
-        ValueError: OPENAI_API_KEYが環境変数に設定されていない場合。
-    """
+    """OpenAIのAPIキーを取得します。"""
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
-        raise ValueError("OPENAI_API_KEY is not set in environment variables")
+        raise ValueError("OPENAI_API_KEYが設定されていません")
     return api_key
 
 
 def get_qdrant_url() -> str:
-    """QdrantのURLを環境変数から取得します。
-
-    Returns:
-        str: QdrantのURL。環境変数が設定されていない場合は'http://localhost:6333'を返します。
-    """
+    """QdrantのURLを取得します。"""
     return os.getenv("QDRANT_URL", "http://localhost:6333")
 
 
-def get_bigquery_credentials_path() -> str:
-    """BigQueryの認証情報ファイルのパスを環境変数から取得します。
+def get_qdrant_api_key() -> str:
+    """QdrantのAPIキーを取得します。"""
+    return os.getenv("QDRANT_API_KEY", "")
 
-    Returns:
-        str: BigQueryの認証情報ファイルのパス。環境変数が設定されていない場合は空文字列を返します。
-    """
+
+def get_bigquery_credentials_path() -> str:
+    """BigQueryの認証情報ファイルのパスを取得します。"""
     return os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")
+
+
+# === GA4 Schema Settings ===
+GA4_SCHEMA_COLLECTION_NAME = "ga4_schema"
+GA4_SCHEMA_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+
+def get_ga4_schema_csv_path() -> Path:
+    """GA4スキーマCSVファイルのパスを返す"""
+    # backend/data/ga4_schema.csv を返す
+    base_dir = Path(__file__).resolve().parent.parent.parent.parent
+    return base_dir / "data" / "ga4_schema" / "ga4_schema.csv"
