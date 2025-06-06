@@ -74,7 +74,3 @@ def import_schema(
     # アップロード
     client.upsert(collection_name=COLLECTION_NAME, points=points)
     print(f"✅ {len(points)} 件のスキーマをQdrantに登録しました")
-
-
-if __name__ == "__main__":
-    app()
