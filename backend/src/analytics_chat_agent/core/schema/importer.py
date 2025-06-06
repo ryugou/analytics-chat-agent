@@ -8,7 +8,7 @@ from qdrant_client import QdrantClient
 from qdrant_client.http import models
 from sentence_transformers import SentenceTransformer
 
-from analytics_chat_agent.config.settings import (
+from ...config.settings import (
     get_qdrant_url,
     get_qdrant_api_key,
     GA4_SCHEMA_MODEL_NAME,

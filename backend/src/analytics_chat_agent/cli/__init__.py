@@ -1,7 +1,5 @@
 """
-Command Line Interface modules.
+CLI関連の機能を提供するパッケージ
 """
-
-from .main import cli
 
 __all__ = ["cli"]

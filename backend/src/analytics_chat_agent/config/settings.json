@@ -1,0 +1,21 @@
+{
+  "bigquery": {
+    "project_id": "ungift",
+    "dataset_id": "analytics_336047273",
+    "credentials_path": "service-account.json"
+  },
+  "qdrant": {
+    "url": "http://localhost:6333",
+    "api_key": "",
+    "collection_name": "ga4_fields"
+  },
+  "model": {
+    "name": "sentence-transformers/all-MiniLM-L6-v2"
+  },
+  "gemini": {
+    "model_name": "gemini-1.5-pro"
+  },
+  "ga4_schema": {
+    "csv_path": "data/ga4_schema/ga4_schema.csv"
+  }
+}
