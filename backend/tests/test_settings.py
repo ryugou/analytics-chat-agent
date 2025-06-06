@@ -1,7 +1,7 @@
 import os
 import pytest
-
 from analytics_chat_agent.config import settings
+from pathlib import Path
 
 
 def test_get_openai_api_key_success(monkeypatch):
@@ -35,27 +35,25 @@ def test_get_bigquery_credentials_path_env(monkeypatch):
     assert settings.get_bigquery_credentials_path() == "/path/to/creds.json"
 
 
-def test_get_qdrant_api_key_default():
-    """Qdrant API Keyが設定されていない場合のテスト"""
-    if "QDRANT_API_KEY" in os.environ:
-        del os.environ["QDRANT_API_KEY"]
+def test_get_qdrant_api_key_default(monkeypatch):
+    monkeypatch.delenv("QDRANT_API_KEY", raising=False)
     assert settings.get_qdrant_api_key() == ""
 
 
-def test_get_qdrant_api_key_env():
-    """Qdrant API Keyが環境変数で設定されている場合のテスト"""
-    os.environ["QDRANT_API_KEY"] = "test-api-key"
+def test_get_qdrant_api_key_env(monkeypatch):
+    monkeypatch.setenv("QDRANT_API_KEY", "test-api-key")
     assert settings.get_qdrant_api_key() == "test-api-key"
 
 
-def test_get_bigquery_credentials_path_default():
-    """BigQuery認証情報のパスが設定されていない場合のテスト"""
-    if "GOOGLE_APPLICATION_CREDENTIALS" in os.environ:
-        del os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
-    assert settings.get_bigquery_credentials_path() == ""
+def test_get_ga4_schema_csv_path(monkeypatch):
+    # デフォルト値のテスト
+    monkeypatch.delenv("GA4_SCHEMA_CSV_PATH", raising=False)
+    path = settings.get_ga4_schema_csv_path()
+    expected = str(Path.cwd() / "data/ga4_schema/ga4_schema.csv")
+    assert str(path) == expected
 
-
-def test_get_bigquery_credentials_path_env():
-    """BigQuery認証情報のパスが環境変数で設定されている場合のテスト"""
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/path/to/credentials.json"
-    assert settings.get_bigquery_credentials_path() == "/path/to/credentials.json"
+    # 環境変数で上書きした場合のテスト
+    test_path = "/tmp/test.csv"
+    monkeypatch.setenv("GA4_SCHEMA_CSV_PATH", test_path)
+    path2 = settings.get_ga4_schema_csv_path()
+    assert str(path2) == test_path
