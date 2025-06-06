@@ -39,9 +39,14 @@ def get_bigquery_credentials_path() -> str:
 # === GA4 Schema Settings ===
 GA4_SCHEMA_COLLECTION_NAME = "ga4_schema"
 GA4_SCHEMA_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+GA4_SCHEMA_VECTOR_SIZE = 384  # all-MiniLM-L6-v2のデフォルト次元数
 
 def get_ga4_schema_csv_path() -> Path:
-    """GA4スキーマCSVファイルのパスを返す"""
-    # backend/data/ga4_schema.csv を返す
+    """GA4スキーマCSVファイルのパスを返す
+    環境変数GA4_SCHEMA_CSV_PATHがあればそれを使い、なければデフォルトパスを返す
+    """
+    env_path = os.getenv("GA4_SCHEMA_CSV_PATH")
+    if env_path:
+        return Path(env_path)
     base_dir = Path(__file__).resolve().parent.parent.parent.parent
     return base_dir / "data" / "ga4_schema" / "ga4_schema.csv"
