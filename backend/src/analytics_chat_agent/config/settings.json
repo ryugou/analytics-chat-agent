@@ -7,7 +7,7 @@
   "qdrant": {
     "url": "http://localhost:6333",
     "api_key": "",
-    "collection_name": "ga4_fields"
+    "collection_name": "ga4_schema"
   },
   "model": {
     "name": "sentence-transformers/all-MiniLM-L6-v2"
@@ -15,7 +15,12 @@
   "gemini": {
     "model_name": "gemini-1.5-pro"
   },
+  "openai": {
+    "api_key": "",
+    "model_name": "gpt-4-turbo-preview"
+  },
   "ga4_schema": {
-    "csv_path": "data/ga4_schema/ga4_schema.csv"
+    "csv_path": "data/ga4_schema/ga4_schema.csv",
+    "virtual_csv_path": "data/ga4_schema/ga4_virtual_key.csv"
   }
 }

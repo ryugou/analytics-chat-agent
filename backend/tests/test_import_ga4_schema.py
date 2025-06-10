@@ -45,7 +45,7 @@ def test_import_schema_vector_size_none(monkeypatch, tmp_path):
             return np.array([0.1, 0.2, 0.3])
 
     monkeypatch.setattr(
-        "analytics_chat_agent.core.schema.importer.SentenceTransformer",
+        "analytics_chat_agent.core.importer.import_ga4_schema.SentenceTransformer",
         lambda name: DummyModel(),
     )
 
@@ -58,19 +58,19 @@ def test_import_schema_vector_size_none(monkeypatch, tmp_path):
             pass
 
     monkeypatch.setattr(
-        "analytics_chat_agent.core.schema.importer.QdrantClient",
+        "analytics_chat_agent.core.importer.import_ga4_schema.QdrantClient",
         DummyQdrantClient,
     )
     monkeypatch.setattr(
-        "analytics_chat_agent.core.schema.importer.models.VectorParams",
+        "analytics_chat_agent.core.importer.import_ga4_schema.models.VectorParams",
         lambda size, distance: None,
     )
     monkeypatch.setattr(
-        "analytics_chat_agent.core.schema.importer.models.Distance",
+        "analytics_chat_agent.core.importer.import_ga4_schema.models.Distance",
         types.SimpleNamespace(COSINE="cosine"),
     )
     monkeypatch.setattr(
-        "analytics_chat_agent.core.schema.importer.models.PointStruct",
+        "analytics_chat_agent.core.importer.import_ga4_schema.models.PointStruct",
         lambda id, vector, payload: None,
     )
 
@@ -104,7 +104,7 @@ def test_import_schema_success(monkeypatch, tmp_path):
             return np.array([0.1, 0.2, 0.3])
 
     monkeypatch.setattr(
-        "analytics_chat_agent.core.schema.importer.SentenceTransformer",
+        "analytics_chat_agent.core.importer.import_ga4_schema.SentenceTransformer",
         lambda name: DummyModel(),
     )
 
@@ -117,19 +117,19 @@ def test_import_schema_success(monkeypatch, tmp_path):
             pass
 
     monkeypatch.setattr(
-        "analytics_chat_agent.core.schema.importer.QdrantClient",
+        "analytics_chat_agent.core.importer.import_ga4_schema.QdrantClient",
         DummyQdrantClient,
     )
     monkeypatch.setattr(
-        "analytics_chat_agent.core.schema.importer.models.VectorParams",
+        "analytics_chat_agent.core.importer.import_ga4_schema.models.VectorParams",
         lambda size, distance: None,
     )
     monkeypatch.setattr(
-        "analytics_chat_agent.core.schema.importer.models.Distance",
+        "analytics_chat_agent.core.importer.import_ga4_schema.models.Distance",
         types.SimpleNamespace(COSINE="cosine"),
     )
     monkeypatch.setattr(
-        "analytics_chat_agent.core.schema.importer.models.PointStruct",
+        "analytics_chat_agent.core.importer.import_ga4_schema.models.PointStruct",
         lambda id, vector, payload: None,
     )
 

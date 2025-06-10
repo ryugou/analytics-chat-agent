@@ -3,5 +3,6 @@
 """
 
 from .gemini import call_gemini
+from .gpt import call_gpt
 
-__all__ = ["call_gemini"] 
+__all__ = ["call_gemini", "call_gpt"] 

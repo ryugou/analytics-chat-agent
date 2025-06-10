@@ -1,150 +1,117 @@
-"""
-フィールド解決モジュール
-"""
+"""フィールド名の解決を行うモジュール。"""
 
-from typing import List, Dict, Any, Optional
-import json
+import os
 from pathlib import Path
-import logging
-from sentence_transformers import SentenceTransformer
+from typing import List, Optional
+import time
+from urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
+import requests
+
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
-from qdrant_client.http.exceptions import UnexpectedResponse
-from ..types.common import FieldMappingResult
-from ..core.llm.gemini import call_gemini
+from sentence_transformers import SentenceTransformer
 
-logger = logging.getLogger(__name__)
+from ..config import get_settings
+from ..types import FieldMappingResult, Field
 
-def get_settings():
-    """設定ファイルを読み込む"""
-    settings_path = Path(__file__).parent.parent / "config" / "settings.json"
-    with open(settings_path) as f:
-        return json.load(f)
+# 設定の読み込み
+settings = get_settings()
+GA4_SCHEMA_MODEL_NAME = settings["model"]["name"]
+GA4_SCHEMA_VECTOR_SIZE = 384  # all-MiniLM-L6-v2のベクトルサイズ
+
+# キャッシュディレクトリの設定
+CACHE_DIR = Path(".cache/sentence_transformers")
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+# モデルのキャッシュ
+_model_cache = {}
+
+def _create_session_with_retry():
+    """リトライ付きのセッションを作成する"""
+    session = requests.Session()
+    retry = Retry(
+        total=5,  # 最大5回リトライ
+        backoff_factor=1,  # リトライ間隔を指数関数的に増加
+        status_forcelist=[500, 502, 503, 504]  # これらのステータスコードでリトライ
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    return session
+
+def get_cached_model():
+    """キャッシュされたモデルを取得する。キャッシュがない場合は新しくダウンロードする。"""
+    global _model_cache
+    if GA4_SCHEMA_MODEL_NAME not in _model_cache:
+        # カスタムセッションを使用してモデルを初期化
+        session = _create_session_with_retry()
+        _model_cache[GA4_SCHEMA_MODEL_NAME] = SentenceTransformer(
+            GA4_SCHEMA_MODEL_NAME,
+            cache_folder=str(CACHE_DIR),
+            device="cpu"  # MPSデバイスでの問題を回避
+        )
+    return _model_cache[GA4_SCHEMA_MODEL_NAME]
 
 class FieldResolver:
-    """
-    フィールド解決を行うクラス
-    """
-    def __init__(self):
-        """
-        FieldResolverの初期化
+    """フィールド名の解決を行うクラス。"""
 
-        Raises:
-            RuntimeError: 必要な設定が不足している場合
+    def __init__(self, collection_name: str = "ga4_schema"):
+        """初期化。
+
+        Args:
+            collection_name: Qdrantのコレクション名
         """
-        self.settings = get_settings()
-        self.model_name = self.settings["model"]["name"]
+        self.collection_name = collection_name
+        self.client = QdrantClient(
+            url=settings["qdrant"]["url"],
+            api_key=settings["qdrant"]["api_key"],
+        )
         
-        # モデルの初期化
-        self.model = SentenceTransformer(self.model_name)
+        # モデルの初期化（キャッシュを使用）
+        self.model = get_cached_model()
         
-        # Qdrantクライアントの初期化
-        try:
-            self.qdrant_client = QdrantClient(
-                url=self.settings["qdrant"]["url"],
-                api_key=self.settings["qdrant"]["api_key"]
+        # ベクトルサイズのチェック
+        if self.model.get_sentence_embedding_dimension() is None:
+            raise ValueError("モデルのベクトルサイズが不正です")
+
+    def resolve_fields(self, query: str, limit: int = 5) -> FieldMappingResult:
+        """自然言語のクエリからフィールド名を解決する。
+
+        Args:
+            query: 自然言語のクエリ
+            limit: 取得するフィールドの最大数
+
+        Returns:
+            FieldMappingResult: 解決されたフィールド情報
+        """
+        # クエリをベクトル化
+        query_vector = self.model.encode(query).tolist()
+        
+        # Qdrantで検索
+        search_result = self.client.search(
+            collection_name=self.collection_name,
+            query_vector=query_vector,  # Vectorクラスのインスタンス化を避け、直接ベクトルを渡す
+            limit=limit,
+            search_params=models.SearchParams(
+                hnsw_ef=128,  # HNSWインデックスの探索パラメータ
+                exact=False,  # 近似検索を使用
+            ),
+        )
+        
+        # 結果を整形
+        fields: List[Field] = []
+        description = ""
+        for result in search_result:
+            field = Field(
+                name=result.payload["name"],
+                type="string"  # 固定の文字列を使用
             )
-        except Exception as e:
-            logger.error(f"Failed to initialize Qdrant client: {e}")
-            raise RuntimeError("Failed to connect to Qdrant server.") from e
+            fields.append(field)
+            if not description:
+                description = result.payload["description"]
         
-        # コレクション名
-        self.collection_name = self.settings["qdrant"]["collection_name"]
-
-    def resolve_fields(self, queries: List[str]) -> FieldMappingResult:
-        """
-        クエリからフィールドを解決する
-
-        Args:
-            queries: 解決対象のクエリリスト
-
-        Returns:
-            FieldMappingResult: フィールド解決結果
-        """
-        try:
-            # プロンプトの構築
-            prompt = self._build_prompt(queries)
-            logger.debug(f"プロンプト: {prompt}")
-            
-            # Gemini APIを呼び出し
-            response = call_gemini(prompt)
-            logger.debug(f"Gemini APIレスポンス: {response}")
-            
-            # レスポンスの解析
-            return self._parse_response(response)
-            
-        except Exception as e:
-            logger.error(f"フィールド解決エラー: {e}")
-            raise RuntimeError("フィールド解決に失敗しました。") from e
-
-    def _build_prompt(self, queries: List[str]) -> str:
-        """
-        プロンプトを構築する
-
-        Args:
-            queries: 解決対象のクエリリスト
-
-        Returns:
-            str: 構築されたプロンプト
-        """
-        return f"""
-        以下のクエリから必要なGA4のフィールド名を抽出してください。
-        クエリ: {queries}
-        
-        必ず以下の形式でJSONを返してください。他の説明やテキストは含めないでください。
-        また、JSONの前後に余分な文字や改行を入れないでください：
-        {{
-            "fields": ["フィールド1", "フィールド2", ...],
-            "description": "フィールドの説明"
-        }}
-        
-        例：
-        {{
-            "fields": ["event_date", "event_name", "user_pseudo_id"],
-            "description": "ユーザー数の分析に必要なフィールド"
-        }}
-        
-        注意：
-        1. 必ず有効なJSON形式で返してください
-        2. 前後に余分な文字や改行を入れないでください
-        3. 他の説明やテキストは含めないでください
-        4. 必ず"fields"と"description"の両方を含めてください
-        5. フィールド名は必ずGA4の実際のフィールド名を使用してください（例：event_date, event_name, event_value, user_pseudo_id など）
-        6. 日本語のフィールド名は使用せず、必ず英語のフィールド名を使用してください
-        """
-
-    def _parse_response(self, response: str) -> FieldMappingResult:
-        """
-        レスポンスを解析する
-
-        Args:
-            response: Gemini APIからのレスポンス
-
-        Returns:
-            FieldMappingResult: 解析結果
-        """
-        try:
-            # JSONとして解析
-            result = json.loads(response)
-            
-            # 型チェック
-            if not isinstance(result, dict):
-                raise ValueError("レスポンスが辞書形式ではありません")
-            
-            if "fields" not in result:
-                raise ValueError("'fields'キーが存在しません")
-            
-            if not isinstance(result["fields"], list):
-                raise ValueError("'fields'がリスト形式ではありません")
-            
-            return FieldMappingResult(
-                fields=result["fields"],
-                description=result.get("description", "")
-            )
-            
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON解析エラー: {e}")
-            raise ValueError("レスポンスのJSON解析に失敗しました。") from e
-        except Exception as e:
-            logger.error(f"レスポンス解析エラー: {e}")
-            raise RuntimeError("レスポンスの解析に失敗しました。") from e 
+        return FieldMappingResult(
+            fields=fields,
+            description=description
+        ) 

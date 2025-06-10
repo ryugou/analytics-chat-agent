@@ -10,7 +10,7 @@ from ..field_resolver import FieldResolver
 from ..sql_generator import generate_sql
 from ..sql_executor import run_bigquery_query
 from ..llm import call_gemini
-from ...types import Intent, FieldMappingResult
+from ...types import Intent, FieldMappingResult, QueryResult
 
 logger = logging.getLogger(__name__)
 
@@ -55,14 +55,20 @@ class AnalysisService:
         1. 必ず有効なJSON形式で返してください
         2. 前後に余分な文字や改行を入れないでください
         3. 他の説明やテキストは含めないでください
+        4. マークダウン記法（```jsonなど）は使用しないでください
+        5. レスポンスは純粋なJSONのみを返してください
         """
 
         response = call_gemini(prompt)
         logger.debug(f"意図抽出のレスポンス: {response}")
         
         try:
-            intent = json.loads(response)
-            return intent
+            intent_dict = json.loads(response)
+            return Intent(
+                key=intent_dict["key"],
+                description=intent_dict["description"],
+                parameters=intent_dict["parameters"]
+            )
         except json.JSONDecodeError as e:
             logger.error(f"意図抽出のレスポンスをJSONとしてパースできませんでした: {e}")
             raise RuntimeError("意図抽出のレスポンスが不正な形式です")
@@ -83,25 +89,45 @@ class AnalysisService:
             logger.info(f"意図を抽出: {intent}")
 
             # フィールドの解決
-            field_mapping = self.field_resolver.resolve_fields([query])
+            field_mapping = self.field_resolver.resolve_fields(query)
             logger.info(f"フィールドを解決: {field_mapping}")
 
             # SQLの生成
             sql = generate_sql(field_mapping)
-            logger.info(f"SQLを生成: {sql}")
+            logger.info(f"生成されたSQL:\n{sql}")
 
             # クエリの実行
             results = run_bigquery_query(sql)
             logger.info(f"クエリを実行: {len(results)}件の結果")
 
+            # 結果を辞書に変換
+            results_dict = []
+            for r in results:
+                if isinstance(r, QueryResult):
+                    # values辞書をそのまま使用
+                    results_dict.append(r.values)
+                else:
+                    # 辞書の場合はそのまま使用
+                    results_dict.append(r)
+
             return {
                 "query": query,
-                "intent": intent,
-                "field_mapping": dict(field_mapping),
+                "intent": {
+                    "key": intent.key,
+                    "description": intent.description,
+                    "parameters": intent.parameters
+                },
+                "fields": {
+                    "fields": [{"name": f.name, "type": f.type} for f in field_mapping.fields],
+                    "description": field_mapping.description
+                },
                 "sql": sql,
-                "results": results
+                "results": results_dict
             }
 
         except Exception as e:
             logger.error(f"分析中にエラーが発生: {str(e)}")
+            logger.error(f"エラーの詳細: {type(e).__name__}: {str(e)}")
+            import traceback
+            logger.error(f"スタックトレース:\n{traceback.format_exc()}")
             raise 
