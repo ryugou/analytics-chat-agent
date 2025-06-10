@@ -28,7 +28,7 @@ def call_gemini(prompt: str) -> str:
     try:
         # APIキーの設定
         genai.configure(api_key=api_key)
-        logger.debug(f"使用するモデル: {model_name}")
+        logger.info(f"使用するモデル: {model_name}")
         
         # モデルの初期化
         model = genai.GenerativeModel(
@@ -49,7 +49,6 @@ def call_gemini(prompt: str) -> str:
                 "top_k": 1,
             }
         )
-        logger.debug(f"生のレスポンス: {response}")
         
         if not response.text:
             raise RuntimeError("Gemini APIからの応答が空です。")

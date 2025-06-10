@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from pathlib import Path
-from analytics_chat_agent.core.schema.importer import SchemaImporter
+from analytics_chat_agent.core.importer.import_ga4_schema import SchemaImporter
 
 class DummyModel:
     def get_sentence_embedding_dimension(self):
@@ -28,20 +28,26 @@ def dummy_csv(tmp_path):
     )
     return csv_path
 
-def test_import_from_csv_success(monkeypatch, dummy_csv):
+def test_import_schema_success(monkeypatch, dummy_csv):
     monkeypatch.setattr(
-        "analytics_chat_agent.core.schema.importer.SentenceTransformer",
+        "analytics_chat_agent.core.importer.import_ga4_schema.SentenceTransformer",
         lambda name: DummyModel(),
     )
     monkeypatch.setattr(
-        "analytics_chat_agent.core.schema.importer.QdrantClient",
+        "analytics_chat_agent.core.importer.import_ga4_schema.QdrantClient",
         DummyQdrantClient,
     )
     importer = SchemaImporter()
-    count = importer.import_from_csv(dummy_csv)
+    count = importer.import_schema(dummy_csv)
     assert count == 2
 
-def test_import_from_csv_file_not_found():
+def test_import_schema_file_not_found():
     importer = SchemaImporter()
     with pytest.raises(FileNotFoundError):
-        importer.import_from_csv(Path("non_existent.csv")) 
+        importer.import_schema(Path("non_existent.csv"))
+
+def test_schema_importer():
+    importer = SchemaImporter()
+    csv_path = Path("data/ga4_schema/ga4_schema.csv")
+    count = importer.import_schema(csv_path)
+    assert count > 0 

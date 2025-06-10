@@ -13,12 +13,7 @@ def extract_intent(question: str) -> Intent:
         question (str): 自然言語での質問文
 
     Returns:
-        Intent: 抽出された意図を含む辞書
-        {
-            "key": str,
-            "description": str,
-            "parameters": Dict[str, Any]
-        }
+        Intent: 抽出された意図を含むオブジェクト
     """
     prompt = f"""次の質問の意図を抽出してください：
 「{question}」
@@ -40,25 +35,29 @@ def extract_intent(question: str) -> Intent:
 
         # 必要なキーが存在することを確認
         if not all(key in result for key in ["key", "description", "parameters"]):
-            return {
-                "key": "",
-                "description": "",
-                "parameters": {}
-            }
+            return Intent(
+                key="",
+                description="",
+                parameters={}
+            )
 
         # parametersの型チェック
         if not isinstance(result["parameters"], dict):
-            return {
-                "key": "",
-                "description": "",
-                "parameters": {}
-            }
+            return Intent(
+                key="",
+                description="",
+                parameters={}
+            )
 
-        return result
+        return Intent(
+            key=result["key"],
+            description=result["description"],
+            parameters=result["parameters"]
+        )
     except (SyntaxError, ValueError, TypeError):
         # 不正な形式の場合は空テンプレートを返す
-        return {
-            "key": "",
-            "description": "",
-            "parameters": {}
-        }
+        return Intent(
+            key="",
+            description="",
+            parameters={}
+        )

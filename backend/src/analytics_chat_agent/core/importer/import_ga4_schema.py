@@ -21,10 +21,10 @@ class SchemaImporter:
             RuntimeError: 必要な設定が不足している場合
         """
         settings = get_settings()
-        
+
         # モデルの初期化
         self.model = SentenceTransformer(settings["model"]["name"])
-        
+
         # Qdrantクライアントの初期化
         try:
             self.qdrant_client = QdrantClient(
@@ -34,16 +34,17 @@ class SchemaImporter:
         except Exception as e:
             logger.error(f"Failed to initialize Qdrant client: {e}")
             raise RuntimeError("Failed to connect to Qdrant server.") from e
-        
+
         # コレクション名
         self.collection_name = settings["qdrant"]["collection_name"]
 
-    def import_schema(self, csv_path: Path) -> int:
+    def import_schema(self, csv_path: Path, source: str = None) -> int:
         """
         CSVファイルからスキーマをインポートする
 
         Args:
             csv_path: スキーマCSVファイルのパス
+            source: オプションの識別子（例: 'virtual'）
 
         Returns:
             int: インポートしたフィールド数
@@ -56,18 +57,10 @@ class SchemaImporter:
             raise FileNotFoundError(f"CSVファイルが見つかりません: {csv_path}")
 
         try:
-            # コレクションの作成（既に存在する場合はスキップ）
             self._create_collection_if_not_exists()
-            
-            # CSVファイルの読み込み
             fields = self._read_csv(csv_path)
-            
-            # フィールドのインポート
-            count = self._import_fields(fields)
-            
-            logger.info(f"{count}件のフィールドをインポートしました。")
+            count = self._import_fields(fields, source)
             return count
-            
         except Exception as e:
             logger.error(f"スキーマインポートエラー: {e}")
             raise RuntimeError("スキーマのインポートに失敗しました。") from e
@@ -79,7 +72,7 @@ class SchemaImporter:
         try:
             collections = self.qdrant_client.get_collections().collections
             exists = any(c.name == self.collection_name for c in collections)
-            
+
             if not exists:
                 self.qdrant_client.create_collection(
                     collection_name=self.collection_name,
@@ -89,7 +82,7 @@ class SchemaImporter:
                     )
                 )
                 logger.info(f"コレクション '{self.collection_name}' を作成しました。")
-                
+
         except Exception as e:
             logger.error(f"コレクション作成エラー: {e}")
             raise RuntimeError("コレクションの作成に失敗しました。") from e
@@ -111,55 +104,61 @@ class SchemaImporter:
                 for row in reader:
                     fields.append({
                         'name': row['name'],
-                        'description': row['description']
+                        'description': row['description'],
+                        'type': row['field_type'],
+                        'parent_field': row.get('parent_field', '')
                     })
             return fields
-            
+
         except Exception as e:
             logger.error(f"CSV読み込みエラー: {e}")
             raise RuntimeError("CSVファイルの読み込みに失敗しました。") from e
 
-    def _import_fields(self, fields: List[Dict[str, str]]) -> int:
+    def _import_fields(self, fields: List[Dict[str, str]], source: str = None) -> int:
         """
         フィールドをQdrantにインポートする
 
         Args:
             fields: フィールド情報のリスト
+            source: オプションの識別子（例: 'virtual'）
 
         Returns:
             int: インポートしたフィールド数
         """
         try:
-            # フィールドの説明をエンベディング
-            texts = [f"{field['name']} {field['description']}" for field in fields]
+            texts = [f"{field['description']} [{field['type']}] → {field['name']}" for field in fields]
             embeddings = self.model.encode(texts)
-            
-            # バッチサイズ
+
             batch_size = 100
-            
-            # バッチ処理
             for i in range(0, len(fields), batch_size):
                 batch_fields = fields[i:i + batch_size]
                 batch_embeddings = embeddings[i:i + batch_size]
-                
-                # ポイントの作成
-                points = [
-                    models.PointStruct(
+
+                points = []
+                for j, (field, embedding) in enumerate(zip(batch_fields, batch_embeddings)):
+                    payload = {
+                        "name": field["name"],
+                        "type": field["type"],
+                        "description": field["description"],
+                        "parent_field": field.get("parent_field", ""),
+                        "full_text": texts[i + j]
+                    }
+                    if source:
+                        payload["source"] = source
+
+                    points.append(models.PointStruct(
                         id=i + j,
                         vector=embedding.tolist(),
-                        payload=field
-                    )
-                    for j, (field, embedding) in enumerate(zip(batch_fields, batch_embeddings))
-                ]
-                
-                # バッチのアップロード
+                        payload=payload
+                    ))
+
                 self.qdrant_client.upsert(
                     collection_name=self.collection_name,
                     points=points
                 )
-                
+
             return len(fields)
-            
+
         except Exception as e:
             logger.error(f"フィールドインポートエラー: {e}")
-            raise RuntimeError("フィールドのインポートに失敗しました。") from e 
+            raise RuntimeError("フィールドのインポートに失敗しました。") from e
