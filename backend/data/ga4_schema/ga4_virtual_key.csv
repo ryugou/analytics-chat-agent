@@ -1,0 +1,30 @@
+name,description,parent_field,field_type
+page_location,表示されたページのURL。GA4のevent_params.key='page_location' で取得する。,event_params.key,STRING
+page_referrer,参照元ページのURL。event_params.key='page_referrer'。,event_params.key,STRING
+page_title,ページタイトル。event_params.key='page_title'。,event_params.key,STRING
+screen_name,アプリ画面名。event_params.key='screen_name'。,event_params.key,STRING
+engagement_time_msec,ページやアプリでのユーザー滞在時間（ミリ秒）。event_params.key='engagement_time_msec'。,event_params.key,INTEGER
+link_url,クリックされたリンク先URL。event_params.key='link_url'。,event_params.key,STRING
+outbound,外部リンククリックかどうか（true/false）。event_params.key='outbound'。,event_params.key,BOOLEAN
+search_term,サイト内検索キーワード。event_params.key='search_term'。,event_params.key,STRING
+video_title,再生された動画のタイトル。event_params.key='video_title'。,event_params.key,STRING
+video_provider,動画の提供元（例: YouTube）。event_params.key='video_provider'。,event_params.key,STRING
+video_current_time,動画の現在の再生位置（秒）。event_params.key='video_current_time'。,event_params.key,FLOAT
+video_percent,動画視聴完了率（0-100%）。event_params.key='video_percent'。,event_params.key,FLOAT
+file_name,ダウンロード対象ファイル名。event_params.key='file_name'。,event_params.key,STRING
+file_extension,ダウンロード対象ファイルの拡張子。event_params.key='file_extension'。,event_params.key,STRING
+campaign,utm_campaignの値。event_params.key='campaign'。,event_params.key,STRING
+source,utm_sourceの値。event_params.key='source'。,event_params.key,STRING
+medium,utm_mediumの値。event_params.key='medium'。,event_params.key,STRING
+term,utm_termの値。event_params.key='term'。,event_params.key,STRING
+content,utm_contentの値。event_params.key='content'。,event_params.key,STRING
+item_id,商品ID。items.item_id に格納。,items.item_id,STRING
+item_name,商品名。items.item_name に格納。,items.item_name,STRING
+item_brand,商品ブランド名。items.item_brand に格納。,items.item_brand,STRING
+item_category,商品カテゴリ。items.item_category に格納。,items.item_category,STRING
+item_variant,商品バリアント。items.item_variant に格納。,items.item_variant,STRING
+price,商品価格。items.price に格納。,items.price,FLOAT
+quantity,商品数量。items.quantity に格納。,items.quantity,INTEGER
+transaction_id,購入・申込の識別ID。event_params.key='transaction_id' または items.transaction_id。,event_params.key,STRING
+value,イベントの価値（例: 購入金額）。event_params.key='value'。,event_params.key,FLOAT
+currency,"通貨コード（例: USD, JPY）。event_params.key='currency'。",event_params.key,STRING
