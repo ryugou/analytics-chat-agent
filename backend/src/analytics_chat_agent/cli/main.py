@@ -10,7 +10,8 @@ import os
 import click
 from dotenv import load_dotenv
 
-from .commands import analyze, version, import_ga4_schema
+from .commands import analyze, version
+from .commands.import_ga4_events import cmd as import_ga4_events
 
 # .envファイルの読み込み
 env_path = Path(__file__).parent.parent.parent.parent / ".env"
@@ -31,7 +32,7 @@ def cli():
 # コマンドの登録
 cli.add_command(analyze)
 cli.add_command(version)
-cli.add_command(import_ga4_schema)
+cli.add_command(import_ga4_events)
 
 if __name__ == "__main__":
     cli()

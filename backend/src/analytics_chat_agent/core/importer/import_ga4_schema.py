@@ -98,17 +98,28 @@ class SchemaImporter:
             List[Dict[str, str]]: フィールド情報のリスト
         """
         fields = []
+        seen: set[tuple[str, str]] = set() 
         try:
-            with open(csv_path, 'r', encoding='utf-8') as f:
+            with csv_path.open("r", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
                 for row in reader:
+                    name  = row["name"].strip()
+                    desc  = row["description"].strip()
+                    ftype = row.get("field_type") or row.get("expected_type", "STRING")
+                    parent = row.get("parent_field", "").strip()
+
+                    key = (name, ftype)
+                    if key in seen:
+                        continue                    # 同CSV内での重複行を除外
+                    seen.add(key)
+
                     fields.append({
-                        'name': row['name'],
-                        'description': row['description'],
-                        'type': row['field_type'],
-                        'parent_field': row.get('parent_field', '')
+                        "name": name,
+                        "description": desc,
+                        "type": ftype,
+                        "parent_field": parent
                     })
-            return fields
+            return fields   
 
         except Exception as e:
             logger.error(f"CSV読み込みエラー: {e}")
@@ -126,37 +137,25 @@ class SchemaImporter:
             int: インポートしたフィールド数
         """
         try:
-            texts = [f"{field['description']} [{field['type']}] → {field['name']}" for field in fields]
-            embeddings = self.model.encode(texts)
+            texts = [f"{f['description']} [{f['type']}] → {f['name']}" for f in fields]
+            embeds = self.model.encode(texts)
 
-            batch_size = 100
-            for i in range(0, len(fields), batch_size):
-                batch_fields = fields[i:i + batch_size]
-                batch_embeddings = embeddings[i:i + batch_size]
+            for rec, vec in zip(fields, embeds):
+                # 🔑 name+source でハッシュ化して id をユニークに
+                uid = abs(hash(f"{rec['name']}|{source or 'schema'}")) % (2**63)
 
-                points = []
-                for j, (field, embedding) in enumerate(zip(batch_fields, batch_embeddings)):
-                    payload = {
-                        "name": field["name"],
-                        "type": field["type"],
-                        "description": field["description"],
-                        "parent_field": field.get("parent_field", ""),
-                        "full_text": texts[i + j]
-                    }
-                    if source:
-                        payload["source"] = source
-
-                    points.append(models.PointStruct(
-                        id=i + j,
-                        vector=embedding.tolist(),
-                        payload=payload
-                    ))
-
+                payload = {
+                    "name": rec["name"],
+                    "type": rec["type"],
+                    "description": rec["description"],
+                    "parent_field": rec["parent_field"],
+                    "source": source or "schema",
+                    "full_text":    f"{rec['description']} [{rec['type']}] → {rec['name']}",
+                }
                 self.qdrant_client.upsert(
                     collection_name=self.collection_name,
-                    points=points
+                    points=[models.PointStruct(id=uid, vector=vec.tolist(), payload=payload)]
                 )
-
             return len(fields)
 
         except Exception as e:
