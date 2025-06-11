@@ -4,6 +4,12 @@
     "dataset_id": "analytics_336047273",
     "credentials_path": "service-account.json"
   },
+  "postgres": {
+    "host": "localhost",
+    "port": 5432,
+    "database": "ga4_db",
+    "user": "ga4_user"
+  },
   "qdrant": {
     "url": "http://localhost:6333",
     "api_key": "",

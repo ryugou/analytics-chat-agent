@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   qdrant:
     image: qdrant/qdrant
@@ -10,5 +8,20 @@ services:
       - qdrant_data:/qdrant/storage
     restart: unless-stopped
 
+  postgres:
+    image: postgres:15
+    container_name: ga4_postgres
+    environment:
+      POSTGRES_USER: ga4_user
+      POSTGRES_PASSWORD: ga4_password
+      POSTGRES_DB: ga4_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./data/sql:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+
 volumes:
   qdrant_data:
+  postgres_data:
