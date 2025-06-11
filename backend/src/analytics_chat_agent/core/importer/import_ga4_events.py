@@ -7,6 +7,9 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional
 from ..database import BigQueryConnection, PostgresConnection
 from ..schema import SchemaManager
+from ...qdrant.importer import import_events_to_qdrant
+from ...config import get_settings
+from qdrant_client import QdrantClient
 import json
 
 logger = logging.getLogger(__name__)
@@ -129,7 +132,18 @@ class EventsImporter:
         events = self._normalize_events(rows)
         
         # PostgreSQLに挿入
-        return self._insert_events(events)
+        count = self._insert_events(events)
+
+        # Qdrantにイベント構造を登録
+        settings = get_settings()
+        qdrant_client = QdrantClient(
+            url=settings["qdrant"]["url"],
+            api_key=settings["qdrant"]["api_key"]
+        )
+        import_events_to_qdrant(self.pg_conn, qdrant_client)
+        logger.info("イベント構造をQdrantに登録しました")
+
+        return count
 
     def _normalize_events(self, rows: List[Any]) -> List[Dict[str, Any]]:
         """
@@ -207,28 +221,6 @@ class EventsImporter:
             events[event_id][column_name] = value
 
         return list(events.values())
-
-    def _extract_param_value(self, value: Dict[str, Any]) -> Any:
-        """
-        パラメータ値から実際の値を抽出
-
-        Args:
-            value: パラメータ値
-
-        Returns:
-            Any: 抽出された値
-        """
-        if value.get("string_value") is not None:
-            return value["string_value"]
-        elif value.get("int_value") is not None:
-            return value["int_value"]
-        elif value.get("float_value") is not None:
-            return value["float_value"]
-        elif value.get("double_value") is not None:
-            return value["double_value"]
-        elif value.get("bool_value") is not None:
-            return value["bool_value"]
-        return None
 
     def _insert_events(self, events: List[Dict[str, Any]]) -> int:
         """
